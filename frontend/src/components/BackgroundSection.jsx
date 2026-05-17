@@ -55,9 +55,6 @@ export default function BackgroundSection() {
               <DetailBlock block={details.technical} />
               <DetailBlock block={details.data} />
               <DetailBlock block={details.approach} />
-              <p className="background-ref text-sm text-secondary">
-                참고: 모델설명.md, 단일모델_vs_앙상블.md, 개발보고서(주상골_골절_AI_최종제출)
-              </p>
             </div>
           )}
         </div>
