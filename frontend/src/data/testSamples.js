@@ -2,7 +2,7 @@
  * frontend/test_xray/{normal,fracture}/ 아래 이미지를 빌드 시 자동 등록합니다.
  * 새 사진 추가 후 dev 서버 재시작(또는 HMR)이 필요할 수 있습니다.
  */
-const modules = import.meta.glob('../../test_xray/**/*.{jpg,jpeg,png,JPG,JPEG,PNG}', {
+const modules = import.meta.glob('../test_samples/**/*.{jpg,jpeg,png,JPG,JPEG,PNG}', {
   eager: true,
   query: '?url',
   import: 'default',
