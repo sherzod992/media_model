@@ -5,6 +5,7 @@ export default function TestSamplePicker({
   onBack,
   selectedId,
   onSelect,
+  onFileUpload,
   loading,
 }) {
   const samples = TEST_SAMPLES[category] ?? [];
@@ -25,9 +26,21 @@ export default function TestSamplePicker({
 
       {samples.length === 0 ? (
         <div className="test-samples-empty">
-          <p>
-            <code>frontend/test_xray/{category}/</code> 폴더에 JPEG/PNG를 넣은 뒤 개발 서버를 재시작하세요.
-          </p>
+          <p>X-ray 이미지를 직접 업로드해서 앙상블 추론을 실행하세요.</p>
+          <label className={`btn btn-primary upload-label${loading ? ' disabled' : ''}`}>
+            이미지 업로드 (JPG / PNG)
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.JPG,.JPEG,.PNG"
+              style={{ display: 'none' }}
+              disabled={loading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onFileUpload(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
         </div>
       ) : (
         <div className="test-samples-grid">

@@ -41,6 +41,13 @@ export default function App() {
     setActiveImageIndex(0);
   };
 
+  const sendToApi = useCallback(async (formData) => {
+    const apiRes = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: formData });
+    if (!apiRes.ok) throw new Error('analyze failed');
+    const data = await apiRes.json();
+    setResults(data.results ?? []);
+  }, []);
+
   const runAnalysis = useCallback(async (sample) => {
     if (!sample || loading) return;
 
@@ -58,18 +65,38 @@ export default function App() {
       const file = new File([blob], sample.fileName, { type: blob.type || 'image/jpeg' });
       const fd = new FormData();
       fd.append('files', file);
-
-      const apiRes = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: fd });
-      if (!apiRes.ok) throw new Error('analyze failed');
-      const data = await apiRes.json();
-      setResults(data.results ?? []);
+      await sendToApi(fd);
     } catch {
-      alert('분석 실패. 백엔드(localhost:9090)를 실행했는지 확인하세요.');
+      alert('분석 실패. 백엔드 서버를 확인하세요.');
       setResults([]);
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, [loading, sendToApi]);
+
+  const handleFileUpload = useCallback(async (file) => {
+    if (!file || loading) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    setSelectedSample({ id: 'upload', label: file.name, fileName: file.name, url: objectUrl });
+    setPreviewUrl(objectUrl);
+    setActiveImageIndex(0);
+    setResults([]);
+    setLoading(true);
+
+    setTimeout(() => resultsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
+
+    try {
+      const fd = new FormData();
+      fd.append('files', file);
+      await sendToApi(fd);
+    } catch {
+      alert('분석 실패. 백엔드 서버를 확인하세요.');
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, sendToApi]);
 
   const previewImages = previewUrl ? [previewUrl] : [];
 
@@ -106,6 +133,7 @@ export default function App() {
           onBackCategory={handleBackCategory}
           selectedSample={selectedSample}
           onSelectSample={runAnalysis}
+          onFileUpload={handleFileUpload}
           images={previewImages}
           results={results}
           loading={loading}

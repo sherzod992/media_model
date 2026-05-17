@@ -38,6 +38,7 @@ export default function DemoSection({
   onBackCategory,
   selectedSample,
   onSelectSample,
+  onFileUpload,
   images,
   results,
   loading,
@@ -61,8 +62,8 @@ export default function DemoSection({
           <span className="demo-badge">부록</span>
           <h2>연구용 추론 데모</h2>
           <p className="section-desc">
-            미리 준비한 X-ray 샘플로 3모델 앙상블(2:1:2)을 체험합니다.
-            <strong> 임상 판정 대체 불가</strong>, 주상골 전용. 백엔드(localhost:9090) 필요.
+            X-ray 이미지를 업로드해 3모델 앙상블(2:1:2)을 체험합니다.
+            <strong> 임상 판정 대체 불가</strong>, 주상골 전용.
           </p>
         </header>
 
@@ -85,6 +86,7 @@ export default function DemoSection({
             onBack={onBackCategory}
             selectedId={selectedSample?.id}
             onSelect={onSelectSample}
+            onFileUpload={onFileUpload}
             loading={loading}
           />
         )}
