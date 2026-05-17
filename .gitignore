@@ -1,0 +1,24 @@
+# 환자 X-ray 데이터 (개인정보 보호)
+frontend/test_xray/
+
+# 모델 가중치 (HF Spaces에 별도 업로드)
+backend/주상골_골절_AI_최종제출/weights/
+
+# Python
+backend/__pycache__/
+backend/*.pyc
+backend/uploads/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# 환경 변수
+.env
+frontend/.env
+frontend/.env.local
+
+# OS
+.DS_Store
+Thumbs.db
