@@ -3,7 +3,11 @@ final_inference.py
 최종 앙상블 추론: yolov8m(0.5) + densenet121(2.0) + efficientnet_b3(1.5)
 임계값 0.515, 민감도 100%, 특이도 66.7%, AUC 0.9630
 """
-import argparse, json, re
+import argparse
+import json
+import logging
+import re
+import traceback
 from pathlib import Path
 from collections import defaultdict
 
@@ -14,6 +18,8 @@ from torchvision import transforms
 import timm
 from ultralytics import YOLO
 
+_logger = logging.getLogger(__name__)
+
 CLASSES      = ["fracture", "normal"]
 FRACTURE_IDX = 0
 MEAN = [0.485, 0.456, 0.406]
@@ -22,6 +28,23 @@ TTA  = [(False,0),(True,0),(False,10),(True,10),(False,-10),(True,-10),(False,20
 
 WEIGHTS   = np.array([2.0, 1.0, 2.0]); WEIGHTS /= WEIGHTS.sum()
 THRESHOLD = 0.515
+
+
+def imread_bgr(path):
+    """OpenCV로 읽고 실패하면 PIL 폴백(배포 환경·특정 JPEG에서 cv2.imread만 None인 경우 방지)."""
+    import cv2
+
+    p = Path(path)
+    img = cv2.imread(str(p))
+    if img is not None:
+        return img
+    try:
+        with Image.open(p) as im:
+            rgb = np.array(im.convert("RGB"))
+        return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    except Exception as e:
+        _logger.warning("imread_bgr 실패 (%s): %s", p, e)
+        return None
 
 MODEL_CFGS = [
     ("yolov8m", "주상골_골절_AI_최종제출/weights/yolo_mura_best.pt", "yolo", None, None),
@@ -149,8 +172,8 @@ def generate_gradcam(model, paths, imgsz, device):
         from pytorch_grad_cam.utils.image import show_cam_on_image
         from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
         import cv2
-    except ImportError:
-        print("Grad-CAM packages not installed.")
+    except ImportError as ie:
+        _logger.error("Grad-CAM 패키지 없음(import 실패): %s", ie)
         return {}
 
     # 모델에 따라 마지막 컨볼루션 레이어 선택
@@ -168,10 +191,11 @@ def generate_gradcam(model, paths, imgsz, device):
 
     for p in paths:
         try:
-            img_origin = cv2.imread(str(p))
+            img_origin = imread_bgr(p)
             if img_origin is None:
+                _logger.warning("Grad-CAM 스킵(이미지 로드 불가): %s", p)
                 continue
-                
+
             rgb_img = cv2.cvtColor(img_origin, cv2.COLOR_BGR2RGB)
             rgb_img_float = np.float32(rgb_img) / 255
             
@@ -193,7 +217,7 @@ def generate_gradcam(model, paths, imgsz, device):
             cv2.imwrite(heatmap_path, cv2.cvtColor(visualization, cv2.COLOR_RGB2BGR))
             heatmap_data[str(p)] = {"path": heatmap_path, "regions": regions}
         except Exception as e:
-            print(f"Grad-CAM Error on {p}: {e}")
+            _logger.error("Grad-CAM 오류 (%s): %s\n%s", p, e, traceback.format_exc())
 
     return heatmap_data
 
@@ -238,12 +262,13 @@ def run(image_paths):
             "patient_score": float(patient_score_val),
             "prediction": pred,
             "threshold": THRESHOLD,
+            "attention_regions": [],
         }
         if str(p) in heatmap_dict:
             hdata = heatmap_dict[str(p)]
             res["heatmap_path"] = hdata["path"]
             res["attention_regions"] = hdata.get("regions") or []
-            
+
         results.append(res)
 
     return results

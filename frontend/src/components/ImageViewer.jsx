@@ -1,5 +1,3 @@
-const BOX_THRESHOLD = 0.60;
-
 function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegions }) {
   return (
     <div className="viewer-pane">
@@ -15,12 +13,12 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
                     key={i}
                     className="attention-box"
                     style={{
-                      left:   `${r.x * 100}%`,
-                      top:    `${r.y * 100}%`,
-                      width:  `${r.w * 100}%`,
+                      left: `${r.x * 100}%`,
+                      top: `${r.y * 100}%`,
+                      width: `${r.w * 100}%`,
                       height: `${r.h * 100}%`,
                     }}
-                    title={`AI 주의 영역 ${i + 1} (활성도 ${Math.round(r.score * 100)}%)`}
+                    title={`AI 주의 영역 ${i + 1}`}
                   >
                     <span className="attention-box-label">{i + 1}</span>
                   </div>
@@ -60,10 +58,7 @@ export default function ImageViewer({
   const hasHeatmap = Boolean(heatmapSrc);
   const isFracture = prediction === 'fracture';
   const regions = Array.isArray(attentionRegions) ? attentionRegions : [];
-  const showBoxes = isFracture && (patientScore ?? 0) >= BOX_THRESHOLD && regions.length > 0;
-
-  // TEMP DEBUG
-  console.log('[BOX DEBUG]', { prediction, patientScore, regionsLen: regions.length, showBoxes, attentionRegions });
+  const showBoxes = isFracture && regions.length > 0;
 
   return (
     <div className="viewer-panel">
@@ -77,9 +72,15 @@ export default function ImageViewer({
       <div className="viewer-toolbar">
         {imageCount > 1 && (
           <>
-            <button type="button" className="tool-btn" disabled={imageIndex === 0} onClick={onPrev} aria-label="이전">‹</button>
-            <span className="viewer-nav-label">{imageIndex + 1} / {imageCount}</span>
-            <button type="button" className="tool-btn" disabled={imageIndex >= imageCount - 1} onClick={onNext} aria-label="다음">›</button>
+            <button type="button" className="tool-btn" disabled={imageIndex === 0} onClick={onPrev} aria-label="이전">
+              ‹
+            </button>
+            <span className="viewer-nav-label">
+              {imageIndex + 1} / {imageCount}
+            </span>
+            <button type="button" className="tool-btn" disabled={imageIndex >= imageCount - 1} onClick={onNext} aria-label="다음">
+              ›
+            </button>
           </>
         )}
         {prediction && (
@@ -91,12 +92,7 @@ export default function ImageViewer({
 
       {originalSrc ? (
         <div className="viewer-content viewer-split">
-          <ViewerPane
-            label="원본 X-ray"
-            src={originalSrc}
-            regions={regions}
-            showRegions={showBoxes}
-          />
+          <ViewerPane label="원본 X-ray" src={originalSrc} regions={regions} showRegions={showBoxes} />
           {hasHeatmap ? (
             <ViewerPane label="AI 주의 영역" src={heatmapSrc} caption heat />
           ) : (
@@ -108,22 +104,13 @@ export default function ImageViewer({
       )}
 
       {showNoHeatmapNote && !hasHeatmap && originalSrc && !loading && (
-        <p className="viewer-footnote viewer-no-heatmap-inline">
-          AI 주의 영역(Grad-CAM)이 이 이미지에서는 생성되지 않았습니다.
-        </p>
+        <p className="viewer-footnote viewer-no-heatmap-inline">AI 주의 영역(Grad-CAM)이 이 이미지에서는 생성되지 않았습니다.</p>
       )}
-
-      {/* TEMP DEBUG — remove after diagnosis */}
-      <div style={{fontSize:'11px',fontFamily:'monospace',background:'#111',color:'#0f0',padding:'6px 10px',borderRadius:4,margin:'4px 0'}}>
-        DBG: pred={prediction ?? 'none'} | score={Math.round((patientScore??0)*100)}% | regions={regions.length} | showBoxes={String(showBoxes)} | heatmap={String(hasHeatmap)}
-      </div>
 
       {hasHeatmap && (
         <p className="viewer-footnote">
           AI 주의 영역은 골절 위치가 아니라, 모델이 참고한 픽셀 분포입니다.
           {showBoxes && ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 원본 위 네모는 Grad-CAM 기반 의심 영역입니다.`}
-          {isFracture && !showBoxes && (patientScore ?? 0) > 0 && (patientScore ?? 0) < BOX_THRESHOLD &&
-            ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 의심 영역 표시는 ${BOX_THRESHOLD * 100}% 이상에서 활성화됩니다.`}
         </p>
       )}
     </div>

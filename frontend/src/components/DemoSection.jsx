@@ -1,18 +1,6 @@
-import ImageViewer from './ImageViewer';
-import DemoCategoryLauncher from './DemoCategoryLauncher';
+import DemoAnalysisDashboard from './DemoAnalysisDashboard';
 import TestSamplePicker from './TestSamplePicker';
-
-function fileNameFromPath(filePath) {
-  if (!filePath) return '—';
-  const parts = filePath.replace(/\\/g, '/').split('/');
-  return parts[parts.length - 1] || filePath;
-}
-
-function caseLabel(patientId, index) {
-  if (/^\d{8}$/.test(patientId)) return `케이스 ${patientId}`;
-  if (/^\d{8}/.test(patientId)) return `케이스 ${patientId.slice(0, 8)}`;
-  return `테스트 케이스 #${index + 1}`;
-}
+import { ALL_TEST_SAMPLES } from '../data/testSamples';
 
 function groupByCase(results) {
   const map = {};
@@ -33,9 +21,7 @@ function groupByCase(results) {
 
 export default function DemoSection({
   demoOpen,
-  category,
-  onSelectCategory,
-  onBackCategory,
+  onCloseDemo,
   selectedSample,
   onSelectSample,
   onFileUpload,
@@ -46,14 +32,18 @@ export default function DemoSection({
   setActiveImageIndex,
   resultsSectionRef,
   onOpenDemo,
+  onNewAnalysis = () => {},
 }) {
   const hasResults = images.length > 0 || loading;
   const cases = groupByCase(results);
   const currentResult = results[activeImageIndex];
+  const primaryCase = cases[0];
+
   const originalSrc = currentResult?.original_base64 ?? images[activeImageIndex];
   const heatmapSrc = currentResult?.heatmap_base64;
   const attentionRegions = currentResult?.attention_regions;
-  const expectedFracture = category === 'fracture';
+  const thumbSources = images.length > 0 ? images : originalSrc ? [originalSrc] : [];
+  const imageScore = currentResult?.image_score ?? primaryCase?.images?.[0]?.image_score;
 
   return (
     <section className="demo-section" id="demo">
@@ -76,14 +66,12 @@ export default function DemoSection({
           </div>
         )}
 
-        {demoOpen && !category && (
-          <DemoCategoryLauncher onSelect={onSelectCategory} loading={loading} />
-        )}
-
-        {demoOpen && category && (
+        {demoOpen && (
           <TestSamplePicker
-            category={category}
-            onBack={onBackCategory}
+            samples={ALL_TEST_SAMPLES}
+            title="전체 샘플"
+            description="정상 예시와 골절 예시를 한 화면에서 선택합니다."
+            onClose={onCloseDemo}
             selectedId={selectedSample?.id}
             onSelect={onSelectSample}
             onFileUpload={onFileUpload}
@@ -92,112 +80,22 @@ export default function DemoSection({
         )}
 
         {hasResults && (
-          <div className="demo-results-block" ref={resultsSectionRef}>
-            {selectedSample && (
-              <p className="demo-selected-name">
-                <span className="demo-selected-type">
-                  {expectedFracture ? '골절 테스트' : '정상 테스트'}
-                </span>
-                · {selectedSample.label}
-              </p>
-            )}
-            <div className="dashboard-section demo-dashboard">
-              <div className="demo-dashboard-main">
-                <ImageViewer
-                  originalSrc={originalSrc}
-                  heatmapSrc={heatmapSrc}
-                  attentionRegions={attentionRegions}
-                  loading={loading}
-                  imageIndex={activeImageIndex}
-                  imageCount={images.length}
-                  onPrev={() => setActiveImageIndex(Math.max(0, activeImageIndex - 1))}
-                  onNext={() => setActiveImageIndex(Math.min(images.length - 1, activeImageIndex + 1))}
-                  prediction={currentResult?.prediction}
-                  patientScore={currentResult?.patient_score}
-                  showNoHeatmapNote={Boolean(currentResult)}
-                />
-                <div className="analysis-panel">
-                  <div className="panel-header">
-                    <h3>추론 결과</h3>
-                    <p className="text-sm text-secondary">이미지 1장 기준 · 환자 ID는 파일명에서 추출</p>
-                  </div>
-                  <div className="panel-content">
-                    {loading && cases.length === 0 && (
-                      <p className="text-secondary text-center">결과를 계산하는 중입니다...</p>
-                    )}
-                    {!loading && cases.length === 0 && (
-                      <p className="text-secondary text-center">결과가 없습니다.</p>
-                    )}
-                    {cases.map((caseItem, idx) => {
-                      const isFracture = caseItem.prediction === 'fracture';
-                      const casePct = (caseItem.patient_score * 100).toFixed(1);
-                      const threshPct = (caseItem.threshold * 100).toFixed(1);
-                      const thresh = caseItem.threshold;
-                      const displayFile = selectedSample?.fileName ?? fileNameFromPath(caseItem.images[0]?.file);
-                      const mismatch = expectedFracture !== isFracture;
-
-                      return (
-                        <div className="result-card result-card-v2" key={caseItem.patient_id}>
-                          <div className="result-card-top">
-                            <div>
-                              <div className="case-title">{caseLabel(caseItem.patient_id, idx)}</div>
-                              <div className="case-filename" title={displayFile}>{displayFile}</div>
-                            </div>
-                            <span className={`status-badge ${isFracture ? 'status-fracture' : 'status-normal'}`}>
-                              {isFracture ? '골절 의심' : '정상 소견'}
-                            </span>
-                          </div>
-
-                          {mismatch && (
-                            <p className="result-expect-note">
-                              {expectedFracture
-                                ? '골절 테스트 샘플이지만 모델은 정상 소견입니다. 반대손·특정 방향 X-ray는 정상으로 나올 수 있습니다.'
-                                : '정상 테스트 샘플이지만 모델은 골절 의심입니다.'}
-                            </p>
-                          )}
-
-                          <div className="result-metric-block">
-                            <div className="prob-label">
-                              <span>골절 확률</span>
-                              <span className="font-medium">{casePct}%</span>
-                            </div>
-                            <div className="prob-bar-wrap">
-                              <div className="prob-bar-bg">
-                                <div
-                                  className="prob-bar-fill"
-                                  style={{
-                                    width: `${casePct}%`,
-                                    backgroundColor: isFracture ? 'var(--warning-amber)' : 'var(--success-green)',
-                                  }}
-                                />
-                                <div
-                                  className="threshold-marker"
-                                  style={{ left: `${threshPct}%` }}
-                                  title={`임계값 ${threshPct}%`}
-                                />
-                              </div>
-                            </div>
-                            <p className="threshold-hint">
-                              임계값 {threshPct}%
-                              {caseItem.patient_score >= thresh ? ' 이상 → 골절 의심' : ' 미만 → 정상 소견'}
-                            </p>
-                          </div>
-
-                          <div className="result-meta-row">
-                            <span>이 이미지 확률</span>
-                            <span>{(caseItem.images[0]?.image_score * 100).toFixed(1)}%</span>
-                          </div>
-
-                          <p className="result-disclaimer">
-                            연구용 추론 결과이며, 임상 최종 판정을 대체하지 않습니다.
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="demo-results-block demo-results-ai-board" ref={resultsSectionRef}>
+            <DemoAnalysisDashboard
+              loading={loading}
+              originalSrc={originalSrc}
+              heatmapSrc={heatmapSrc}
+              attentionRegions={attentionRegions}
+              prediction={currentResult?.prediction ?? primaryCase?.prediction}
+              patientScore={primaryCase?.patient_score ?? currentResult?.patient_score}
+              imageScore={imageScore}
+              patientId={String(currentResult?.patient_id ?? primaryCase?.patient_id ?? '—')}
+              imageCount={Math.max(thumbSources.length, 1)}
+              imageIndex={Math.min(activeImageIndex, Math.max(thumbSources.length - 1, 0))}
+              images={thumbSources}
+              onThumbSelect={setActiveImageIndex}
+              onNewAnalysis={onNewAnalysis}
+            />
           </div>
         )}
       </div>

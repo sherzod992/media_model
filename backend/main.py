@@ -3,8 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 import base64
+import uuid
+import logging
 from pathlib import Path
 from final_inference import run
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 app = FastAPI(title="MediAI-FX Backend")
 
@@ -27,11 +32,19 @@ def get_base64(path):
 async def health_check():
     return {"status": "ok", "service": "MediAI-FX Backend"}
 
+def _safe_upload_suffix(filename: str) -> str:
+    """ASCII 경로로 저장해 Linux 컨테이너 등에서 이미지 I/O 불일치 방지."""
+    ext = Path(filename or "").suffix.lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"):
+        ext = ".jpg"
+    return ext
+
+
 @app.post("/api/analyze")
 async def analyze_xray(files: list[UploadFile] = File(...)):
     paths = []
     for file in files:
-        file_path = UPLOAD_DIR / file.filename
+        file_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{_safe_upload_suffix(file.filename)}"
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         paths.append(str(file_path))
@@ -44,7 +57,7 @@ async def analyze_xray(files: list[UploadFile] = File(...)):
             if "heatmap_path" in r and os.path.exists(r["heatmap_path"]):
                 r["heatmap_base64"] = get_base64(r["heatmap_path"])
         except Exception as e:
-            print(f"Error encoding base64: {e}")
+            log.warning("Base64 인코딩 실패: %s", e, exc_info=True)
     
     # cleanup
     for p in paths:

@@ -38,7 +38,5 @@ export const TEST_SAMPLES = {
   fracture: buildList('fracture'),
 };
 
-export const TEST_CATEGORIES = [
-  { id: 'normal', label: '정상', description: '정상 소견 예상 케이스' },
-  { id: 'fracture', label: '골절(비정상)', description: '골절 의심 예상 케이스' },
-];
+/** 데모에서 정상·골절 샘플을 한 화면에 나열할 때 사용 (정상 먼저, 파일명 순) */
+export const ALL_TEST_SAMPLES = [...TEST_SAMPLES.normal, ...TEST_SAMPLES.fracture];

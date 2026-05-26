@@ -7,7 +7,6 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:9090';
 
 export default function App() {
   const [demoOpen, setDemoOpen] = useState(false);
-  const [category, setCategory] = useState(null);
   const [selectedSample, setSelectedSample] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [results, setResults] = useState([]);
@@ -17,7 +16,6 @@ export default function App() {
 
   const openDemo = () => {
     setDemoOpen(true);
-    setCategory(null);
     setSelectedSample(null);
     setPreviewUrl(null);
     setResults([]);
@@ -25,16 +23,8 @@ export default function App() {
     setTimeout(() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
-  const handleSelectCategory = (cat) => {
-    setCategory(cat);
-    setSelectedSample(null);
-    setPreviewUrl(null);
-    setResults([]);
-    setActiveImageIndex(0);
-  };
-
-  const handleBackCategory = () => {
-    setCategory(null);
+  const closeDemo = () => {
+    setDemoOpen(false);
     setSelectedSample(null);
     setPreviewUrl(null);
     setResults([]);
@@ -98,6 +88,14 @@ export default function App() {
     }
   }, [loading, sendToApi]);
 
+  const handleNewAnalysis = useCallback(() => {
+    setResults([]);
+    setSelectedSample(null);
+    setPreviewUrl(null);
+    setActiveImageIndex(0);
+    setTimeout(() => document.querySelector('#demo .test-sample-picker')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+  }, []);
+
   const previewImages = previewUrl ? [previewUrl] : [];
 
   return (
@@ -127,9 +125,8 @@ export default function App() {
       <main className="landing-container view-enter">
         <DemoSection
           demoOpen={demoOpen}
-          category={category}
-          onSelectCategory={handleSelectCategory}
-          onBackCategory={handleBackCategory}
+          onCloseDemo={closeDemo}
+          onNewAnalysis={handleNewAnalysis}
           selectedSample={selectedSample}
           onSelectSample={runAnalysis}
           onFileUpload={handleFileUpload}
