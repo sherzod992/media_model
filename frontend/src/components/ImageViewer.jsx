@@ -1,18 +1,17 @@
-import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+
+const BOX_THRESHOLD = 0.60;
 
 function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegions }) {
-  const imgRef = useRef(null);
   const [boxStyle, setBoxStyle] = useState(null);
 
-  // object-fit:contain 기준으로 실제 그려진 비트맵 영역(레터박스 제외)에 오버레이 맞춤
-  const computeBoxStyle = useCallback(() => {
-    const img = imgRef.current;
-    if (!img || !img.complete || !img.naturalWidth) return;
-    const iw = img.clientWidth;
-    const ih = img.clientHeight;
+  const handleLoad = useCallback((e) => {
+    const img = e.currentTarget;
+    const iw = img.offsetWidth;
+    const ih = img.offsetHeight;
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
-    if (!iw || !ih) return;
+    if (!iw || !ih || !nw || !nh) return;
     const scale = Math.min(iw / nw, ih / nh);
     const rw = nw * scale;
     const rh = nh * scale;
@@ -24,34 +23,11 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
     });
   }, []);
 
-  // 이미지 캐시 완료·결과 지연 도착·flex 리사이즈 때 onLoad만으로는 boxStyle이 비는 경우 방지
-  useLayoutEffect(() => {
-    if (!showRegions || !regions?.length || !src) return;
-    const img = imgRef.current;
-    if (!img) return;
-
-    const parent = img.offsetParent;
-    let ro;
-    if (typeof ResizeObserver !== 'undefined' && parent) {
-      ro = new ResizeObserver(() => computeBoxStyle());
-      ro.observe(parent);
-    }
-
-    computeBoxStyle();
-    if (!img.complete) {
-      const onLoad = () => computeBoxStyle();
-      img.addEventListener('load', onLoad);
-      return () => {
-        img.removeEventListener('load', onLoad);
-        ro?.disconnect();
-      };
-    }
-    return () => ro?.disconnect();
-  }, [showRegions, regions, src, computeBoxStyle]);
   useEffect(() => {
-    window.addEventListener('resize', computeBoxStyle);
-    return () => window.removeEventListener('resize', computeBoxStyle);
-  }, [computeBoxStyle]);
+    const onResize = () => setBoxStyle(null); // 리사이즈 시 재계산 대기
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   return (
     <div className="viewer-pane">
@@ -59,13 +35,13 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
       <div className={`viewer-pane-body ${heat ? 'viewer-pane-body-heat' : ''} ${placeholder ? 'viewer-pane-muted' : ''}`}>
         {src ? (
           <>
+            {/* key={src} 로 src 변경 시 img 재마운트 → onLoad 항상 발생 보장 */}
             <img
-              ref={imgRef}
+              key={src}
               src={src}
               alt={label}
               className="viewer-pane-image"
-              onLoadStart={() => setBoxStyle(null)}
-              onLoad={computeBoxStyle}
+              onLoad={handleLoad}
             />
             {showRegions && regions?.length > 0 && boxStyle && (
               <div
@@ -130,7 +106,7 @@ export default function ImageViewer({
   const hasHeatmap = Boolean(heatmapSrc);
   const isFracture = prediction === 'fracture';
   const regions = Array.isArray(attentionRegions) ? attentionRegions : [];
-  const showBoxes = isFracture && regions.length > 0;
+  const showBoxes = isFracture && (patientScore ?? 0) >= BOX_THRESHOLD && regions.length > 0;
 
   return (
     <div className="viewer-panel">
@@ -196,8 +172,9 @@ export default function ImageViewer({
       {hasHeatmap && (
         <p className="viewer-footnote">
           AI 주의 영역은 골절 위치가 아니라, 모델이 참고한 픽셀 분포입니다.
-          {showBoxes && ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 원본 위 네모는 주의가 높은 구간의 추정 범위입니다.`}
-          {!showBoxes && isFracture && ' 원본에 관심 영역(네모) 좌표가 없습니다.'}
+          {showBoxes && ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 원본 위 네모는 Grad-CAM 기반 의심 영역입니다.`}
+          {isFracture && !showBoxes && (patientScore ?? 0) < BOX_THRESHOLD && (patientScore ?? 0) > 0 &&
+            ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 의심 영역 표시는 ${BOX_THRESHOLD * 100}% 이상에서 활성화됩니다.`}
         </p>
       )}
     </div>
