@@ -96,7 +96,7 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
   );
 }
 
-const BOX_THRESHOLD = 0.75;
+const BOX_THRESHOLD = 0.60;
 
 export default function ImageViewer({
   originalSrc,
@@ -178,7 +178,7 @@ export default function ImageViewer({
 
       {isFracture && !showBoxes && (patientScore ?? 0) < BOX_THRESHOLD && (patientScore ?? 0) > 0 && (
         <p className="viewer-footnote viewer-footnote-warn">
-          골절 확률 {Math.round((patientScore ?? 0) * 100)}% — 의심 영역 표시는 75% 이상에서 활성화됩니다.
+          골절 확률 {Math.round((patientScore ?? 0) * 100)}% — 의심 영역 표시는 60% 이상에서 활성화됩니다.
         </p>
       )}
 
