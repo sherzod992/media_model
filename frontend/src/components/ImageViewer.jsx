@@ -25,11 +25,6 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
     });
   }, []);
 
-  // src 변경 시 이전 박스 제거
-  useEffect(() => {
-    setBoxStyle(null);
-  }, [src]);
-
   // 창 크기 변경 시 재계산
   useEffect(() => {
     window.addEventListener('resize', computeBoxStyle);
@@ -47,6 +42,7 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
               src={src}
               alt={label}
               className="viewer-pane-image"
+              onLoadStart={() => setBoxStyle(null)}
               onLoad={computeBoxStyle}
             />
             {showRegions && regions?.length > 0 && boxStyle && (
