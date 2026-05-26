@@ -69,7 +69,7 @@ def patient_score(paths, probs):
     return {k: max(v) for k, v in pat.items()}
 
 
-def extract_attention_regions(cam, img_w, img_h, max_regions=3, percentile=85):
+def extract_attention_regions(cam, img_w, img_h, max_regions=2, percentile=92):
     """Grad-CAM 활성도에서 정규화(0~1) 바운딩 박스 추출."""
     import cv2
 
@@ -77,7 +77,8 @@ def extract_attention_regions(cam, img_w, img_h, max_regions=3, percentile=85):
     thresh_val = float(np.percentile(cam_norm, percentile))
     mask = (cam_norm >= thresh_val).astype(np.uint8) * 255
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+    # 커널 축소: 윤곽을 덜 채워 더 정밀한 박스 생성
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -89,7 +90,8 @@ def extract_attention_regions(cam, img_w, img_h, max_regions=3, percentile=85):
         if area < min_area:
             continue
         x, y, w, h = cv2.boundingRect(cnt)
-        pad = int(max(w, h) * 0.08)
+        # 패딩 축소: 3%로 타이트하게
+        pad = int(max(w, h) * 0.03)
         x = max(0, x - pad)
         y = max(0, y - pad)
         w = min(img_w - x, w + pad * 2)
@@ -106,10 +108,10 @@ def extract_attention_regions(cam, img_w, img_h, max_regions=3, percentile=85):
     regions.sort(key=lambda r: r["score"], reverse=True)
     regions = regions[:max_regions]
 
-    # 히트맵은 있는데 윤곽 추출이 비는 경우(후속 모델 CAM 분포 등) UI 네모 폴백
+    # 윤곽 추출 실패 시 폴백: 최고 활성화 지점 중심의 작은 박스
     if not regions:
         gy, gx = np.unravel_index(int(np.argmax(cam_norm)), cam_norm.shape)
-        span = max(img_w, img_h) * 0.22
+        span = max(img_w, img_h) * 0.14
         x = max(0.0, gx - span / 2)
         y = max(0.0, gy - span / 2)
         w = min(img_w - x, span)
