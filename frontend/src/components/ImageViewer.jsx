@@ -62,6 +62,9 @@ export default function ImageViewer({
   const regions = Array.isArray(attentionRegions) ? attentionRegions : [];
   const showBoxes = isFracture && (patientScore ?? 0) >= BOX_THRESHOLD && regions.length > 0;
 
+  // TEMP DEBUG
+  console.log('[BOX DEBUG]', { prediction, patientScore, regionsLen: regions.length, showBoxes, attentionRegions });
+
   return (
     <div className="viewer-panel">
       {loading && (
@@ -109,6 +112,11 @@ export default function ImageViewer({
           AI 주의 영역(Grad-CAM)이 이 이미지에서는 생성되지 않았습니다.
         </p>
       )}
+
+      {/* TEMP DEBUG — remove after diagnosis */}
+      <div style={{fontSize:'11px',fontFamily:'monospace',background:'#111',color:'#0f0',padding:'6px 10px',borderRadius:4,margin:'4px 0'}}>
+        DBG: pred={prediction ?? 'none'} | score={Math.round((patientScore??0)*100)}% | regions={regions.length} | showBoxes={String(showBoxes)} | heatmap={String(hasHeatmap)}
+      </div>
 
       {hasHeatmap && (
         <p className="viewer-footnote">
