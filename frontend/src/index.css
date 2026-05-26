@@ -1576,6 +1576,10 @@ h1, h2, h3, h4, h5, h6 {
   border-top: none;
 }
 
+.viewer-footnote-warn {
+  color: var(--warning-amber);
+}
+
 /* Image viewer (demo) */
 .image-viewer {
   display: flex;

@@ -96,6 +96,8 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
   );
 }
 
+const BOX_THRESHOLD = 0.75;
+
 export default function ImageViewer({
   originalSrc,
   heatmapSrc,
@@ -106,11 +108,12 @@ export default function ImageViewer({
   onPrev,
   onNext,
   prediction,
+  patientScore,
   showNoHeatmapNote,
 }) {
   const hasHeatmap = Boolean(heatmapSrc);
   const isFracture = prediction === 'fracture';
-  const showBoxes = isFracture && attentionRegions?.length > 0;
+  const showBoxes = isFracture && (patientScore ?? 0) >= BOX_THRESHOLD && attentionRegions?.length > 0;
 
   return (
     <div className="viewer-panel">
@@ -173,10 +176,16 @@ export default function ImageViewer({
         </p>
       )}
 
+      {isFracture && !showBoxes && (patientScore ?? 0) < BOX_THRESHOLD && (patientScore ?? 0) > 0 && (
+        <p className="viewer-footnote viewer-footnote-warn">
+          골절 확률 {Math.round((patientScore ?? 0) * 100)}% — 의심 영역 표시는 75% 이상에서 활성화됩니다.
+        </p>
+      )}
+
       {hasHeatmap && (
         <p className="viewer-footnote">
           AI 주의 영역은 골절 위치가 아니라, 모델이 참고한 픽셀 분포입니다.
-          {showBoxes && ' 골절 의심 시 원본 위 네모는 주의가 높은 구간의 추정 범위입니다.'}
+          {showBoxes && ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 원본 위 네모는 Grad-CAM 기반 의심 영역입니다.`}
         </p>
       )}
     </div>

@@ -113,6 +113,7 @@ export default function DemoSection({
                   onPrev={() => setActiveImageIndex(Math.max(0, activeImageIndex - 1))}
                   onNext={() => setActiveImageIndex(Math.min(images.length - 1, activeImageIndex + 1))}
                   prediction={currentResult?.prediction}
+                  patientScore={currentResult?.patient_score}
                   showNoHeatmapNote={Boolean(currentResult)}
                 />
                 <div className="analysis-panel">
