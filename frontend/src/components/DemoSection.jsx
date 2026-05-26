@@ -59,7 +59,7 @@ export default function DemoSection({
     <section className="demo-section" id="demo">
       <div className="section-inner">
         <header className="section-header left">
-          <span className="demo-badge">부록</span>
+          <span className="demo-badge">체험</span>
           <h2>연구용 추론 데모</h2>
           <p className="section-desc">
             X-ray 이미지를 업로드해 3모델 앙상블(2:1:2)을 체험합니다.

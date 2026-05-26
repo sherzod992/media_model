@@ -23,6 +23,10 @@ def get_base64(path):
     with open(path, "rb") as f:
         return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("utf-8")
 
+@app.get("/")
+async def health_check():
+    return {"status": "ok", "service": "MediAI-FX Backend"}
+
 @app.post("/api/analyze")
 async def analyze_xray(files: list[UploadFile] = File(...)):
     paths = []

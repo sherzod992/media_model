@@ -107,13 +107,13 @@ export default function App() {
           <span>Tri-<span>Scaphoid</span></span>
         </div>
         <nav className="nav-links">
+          <a href="#demo">데모</a>
           <a href="#background">배경</a>
           <a href="#experiments">실험</a>
           <a href="#process">과정</a>
           <a href="#ensemble">앙상블</a>
           <a href="#performance">성능</a>
           <a href="#limitations">한계</a>
-          <a href="#demo">데모</a>
         </nav>
         <div className="nav-actions">
           <button type="button" className="btn btn-secondary btn-sm" onClick={openDemo}>
@@ -125,7 +125,6 @@ export default function App() {
         </div>
       </header>
       <main className="landing-container view-enter">
-        <ResearchPage />
         <DemoSection
           demoOpen={demoOpen}
           category={category}
@@ -142,6 +141,7 @@ export default function App() {
           resultsSectionRef={resultsSectionRef}
           onOpenDemo={openDemo}
         />
+        <ResearchPage />
         <footer className="footer">
           <div className="footer-content">
             <span className="footer-brand">Tri-Scaphoid · 주상골 골절 X-ray AI 연구</span>

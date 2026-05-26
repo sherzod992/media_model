@@ -1,13 +1,67 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
+
 function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegions }) {
+  const imgRef = useRef(null);
+  const [boxStyle, setBoxStyle] = useState(null);
+
+  // object-fit:contain 레터박스 오프셋을 계산해 박스 컨테이너를 실제 이미지 위에 정렬
+  const computeBoxStyle = useCallback(() => {
+    const img = imgRef.current;
+    if (!img || !img.complete || !img.naturalWidth) return;
+    const iw = img.offsetWidth;
+    const ih = img.offsetHeight;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!iw || !ih) return;
+    const scale = Math.min(iw / nw, ih / nh);
+    const rw = nw * scale;
+    const rh = nh * scale;
+    // viewer-pane-image 는 inset:12px 이므로 +12 보정
+    setBoxStyle({
+      left: (iw - rw) / 2 + 12,
+      top: (ih - rh) / 2 + 12,
+      width: rw,
+      height: rh,
+    });
+  }, []);
+
+  // src 변경 시 이전 박스 제거
+  useEffect(() => {
+    setBoxStyle(null);
+  }, [src]);
+
+  // 창 크기 변경 시 재계산
+  useEffect(() => {
+    window.addEventListener('resize', computeBoxStyle);
+    return () => window.removeEventListener('resize', computeBoxStyle);
+  }, [computeBoxStyle]);
+
   return (
     <div className="viewer-pane">
       <p className="viewer-pane-label">{label}</p>
       <div className={`viewer-pane-body ${heat ? 'viewer-pane-body-heat' : ''} ${placeholder ? 'viewer-pane-muted' : ''}`}>
         {src ? (
           <>
-            <img src={src} alt={label} className="viewer-pane-image" />
-            {showRegions && regions?.length > 0 && (
-              <div className="attention-boxes" aria-hidden="true">
+            <img
+              ref={imgRef}
+              src={src}
+              alt={label}
+              className="viewer-pane-image"
+              onLoad={computeBoxStyle}
+            />
+            {showRegions && regions?.length > 0 && boxStyle && (
+              <div
+                className="attention-boxes"
+                style={{
+                  position: 'absolute',
+                  inset: 'unset',
+                  left: `${boxStyle.left}px`,
+                  top: `${boxStyle.top}px`,
+                  width: `${boxStyle.width}px`,
+                  height: `${boxStyle.height}px`,
+                }}
+                aria-hidden="true"
+              >
                 {regions.map((r, i) => (
                   <div
                     key={i}
