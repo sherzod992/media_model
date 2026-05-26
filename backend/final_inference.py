@@ -104,7 +104,41 @@ def extract_attention_regions(cam, img_w, img_h, max_regions=3, percentile=85):
         })
 
     regions.sort(key=lambda r: r["score"], reverse=True)
-    return regions[:max_regions]
+    regions = regions[:max_regions]
+
+    # 히트맵은 있는데 윤곽 추출이 비는 경우(후속 모델 CAM 분포 등) UI 네모 폴백
+    if not regions:
+        gy, gx = np.unravel_index(int(np.argmax(cam_norm)), cam_norm.shape)
+        span = max(img_w, img_h) * 0.22
+        x = max(0.0, gx - span / 2)
+        y = max(0.0, gy - span / 2)
+        w = min(img_w - x, span)
+        h = min(img_h - y, span)
+        peak = float(cam_norm[gy, gx])
+        regions.append({
+            "x": round(x / img_w, 4),
+            "y": round(y / img_h, 4),
+            "w": round(w / img_w, 4),
+            "h": round(h / img_h, 4),
+            "score": round(peak, 3),
+        })
+
+    return regions
+
+
+def merge_heatmap_entries(existing, new_maps):
+    """같은 경로에 대해 새 히트맵으로 덮되, regions가 비면 이전 비어 있지 않은 regions를 유지한다."""
+    for key, val in new_maps.items():
+        if not val:
+            continue
+        prev = existing.get(key)
+        new_regs = val.get("regions") or []
+        if prev:
+            prev_regs = prev.get("regions") or []
+            regions = new_regs if len(new_regs) > 0 else prev_regs
+            existing[key] = {"path": val["path"], "regions": regions}
+        else:
+            existing[key] = val
 
 
 def generate_gradcam(model, paths, imgsz, device):
@@ -181,7 +215,7 @@ def run(image_paths):
             p = infer_timm(m, paths, imgsz, device)
             
             hmaps = generate_gradcam(m, paths, imgsz, device)
-            heatmap_dict.update(hmaps)
+            merge_heatmap_entries(heatmap_dict, hmaps)
             
             del m; torch.cuda.empty_cache()
         model_probs.append(p)
@@ -206,8 +240,7 @@ def run(image_paths):
         if str(p) in heatmap_dict:
             hdata = heatmap_dict[str(p)]
             res["heatmap_path"] = hdata["path"]
-            if hdata.get("regions"):
-                res["attention_regions"] = hdata["regions"]
+            res["attention_regions"] = hdata.get("regions") or []
             
         results.append(res)
 

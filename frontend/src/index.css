@@ -1498,7 +1498,7 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   inset: 12px;
   pointer-events: none;
-  z-index: 2;
+  z-index: 3;
 }
 
 .attention-box {
@@ -1542,6 +1542,7 @@ h1, h2, h3, h4, h5, h6 {
   height: calc(100% - 24px);
   object-fit: contain;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+  z-index: 1;
 }
 
 .viewer-pane-empty,

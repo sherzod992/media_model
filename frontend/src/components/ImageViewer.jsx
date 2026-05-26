@@ -1,31 +1,53 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 
 function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegions }) {
   const imgRef = useRef(null);
   const [boxStyle, setBoxStyle] = useState(null);
 
-  // object-fit:contain 레터박스 오프셋을 계산해 박스 컨테이너를 실제 이미지 위에 정렬
+  // object-fit:contain 기준으로 실제 그려진 비트맵 영역(레터박스 제외)에 오버레이 맞춤
   const computeBoxStyle = useCallback(() => {
     const img = imgRef.current;
     if (!img || !img.complete || !img.naturalWidth) return;
-    const iw = img.offsetWidth;
-    const ih = img.offsetHeight;
+    const iw = img.clientWidth;
+    const ih = img.clientHeight;
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
     if (!iw || !ih) return;
     const scale = Math.min(iw / nw, ih / nh);
     const rw = nw * scale;
     const rh = nh * scale;
-    // viewer-pane-image 는 inset:12px 이므로 +12 보정
     setBoxStyle({
-      left: (iw - rw) / 2 + 12,
-      top: (ih - rh) / 2 + 12,
+      left: img.offsetLeft + (iw - rw) / 2,
+      top: img.offsetTop + (ih - rh) / 2,
       width: rw,
       height: rh,
     });
   }, []);
 
-  // 창 크기 변경 시 재계산
+  // 이미지 캐시 완료·결과 지연 도착·flex 리사이즈 때 onLoad만으로는 boxStyle이 비는 경우 방지
+  useLayoutEffect(() => {
+    if (!showRegions || !regions?.length || !src) return;
+    const img = imgRef.current;
+    if (!img) return;
+
+    const parent = img.offsetParent;
+    let ro;
+    if (typeof ResizeObserver !== 'undefined' && parent) {
+      ro = new ResizeObserver(() => computeBoxStyle());
+      ro.observe(parent);
+    }
+
+    computeBoxStyle();
+    if (!img.complete) {
+      const onLoad = () => computeBoxStyle();
+      img.addEventListener('load', onLoad);
+      return () => {
+        img.removeEventListener('load', onLoad);
+        ro?.disconnect();
+      };
+    }
+    return () => ro?.disconnect();
+  }, [showRegions, regions, src, computeBoxStyle]);
   useEffect(() => {
     window.addEventListener('resize', computeBoxStyle);
     return () => window.removeEventListener('resize', computeBoxStyle);
@@ -107,8 +129,8 @@ export default function ImageViewer({
 }) {
   const hasHeatmap = Boolean(heatmapSrc);
   const isFracture = prediction === 'fracture';
-  /** 골절 의심이고 서버에서 영역 좌표가 오면 표시 (알람 임계값과 표시 로직 불일치 방지) */
-  const showBoxes = isFracture && (attentionRegions?.length ?? 0) > 0;
+  const regions = Array.isArray(attentionRegions) ? attentionRegions : [];
+  const showBoxes = isFracture && regions.length > 0;
 
   return (
     <div className="viewer-panel">
@@ -149,7 +171,7 @@ export default function ImageViewer({
           <ViewerPane
             label="원본 X-ray"
             src={originalSrc}
-            regions={attentionRegions}
+            regions={regions}
             showRegions={showBoxes}
           />
           {hasHeatmap ? (
