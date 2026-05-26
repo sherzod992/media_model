@@ -1,69 +1,23 @@
-import { useState, useCallback, useEffect } from 'react';
-
 const BOX_THRESHOLD = 0.60;
 
 function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegions }) {
-  const [boxStyle, setBoxStyle] = useState(null);
-
-  const handleLoad = useCallback((e) => {
-    const img = e.currentTarget;
-    const iw = img.offsetWidth;
-    const ih = img.offsetHeight;
-    const nw = img.naturalWidth;
-    const nh = img.naturalHeight;
-    if (!iw || !ih || !nw || !nh) return;
-    const scale = Math.min(iw / nw, ih / nh);
-    const rw = nw * scale;
-    const rh = nh * scale;
-    setBoxStyle({
-      left: img.offsetLeft + (iw - rw) / 2,
-      top: img.offsetTop + (ih - rh) / 2,
-      width: rw,
-      height: rh,
-    });
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => setBoxStyle(null); // 리사이즈 시 재계산 대기
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
   return (
     <div className="viewer-pane">
       <p className="viewer-pane-label">{label}</p>
       <div className={`viewer-pane-body ${heat ? 'viewer-pane-body-heat' : ''} ${placeholder ? 'viewer-pane-muted' : ''}`}>
         {src ? (
-          <>
-            {/* key={src} 로 src 변경 시 img 재마운트 → onLoad 항상 발생 보장 */}
-            <img
-              key={src}
-              src={src}
-              alt={label}
-              className="viewer-pane-image"
-              onLoad={handleLoad}
-            />
-            {showRegions && regions?.length > 0 && boxStyle && (
-              <div
-                className="attention-boxes"
-                style={{
-                  position: 'absolute',
-                  inset: 'unset',
-                  left: `${boxStyle.left}px`,
-                  top: `${boxStyle.top}px`,
-                  width: `${boxStyle.width}px`,
-                  height: `${boxStyle.height}px`,
-                }}
-                aria-hidden="true"
-              >
+          <div className="viewer-image-wrap">
+            <img src={src} alt={label} className="viewer-pane-image" />
+            {showRegions && regions?.length > 0 && (
+              <div className="attention-boxes" aria-hidden="true">
                 {regions.map((r, i) => (
                   <div
                     key={i}
                     className="attention-box"
                     style={{
-                      left: `${r.x * 100}%`,
-                      top: `${r.y * 100}%`,
-                      width: `${r.w * 100}%`,
+                      left:   `${r.x * 100}%`,
+                      top:    `${r.y * 100}%`,
+                      width:  `${r.w * 100}%`,
                       height: `${r.h * 100}%`,
                     }}
                     title={`AI 주의 영역 ${i + 1} (활성도 ${Math.round(r.score * 100)}%)`}
@@ -73,7 +27,7 @@ function ViewerPane({ label, src, caption, heat, placeholder, regions, showRegio
                 ))}
               </div>
             )}
-          </>
+          </div>
         ) : (
           <p className="viewer-pane-placeholder">{placeholder}</p>
         )}
@@ -120,19 +74,9 @@ export default function ImageViewer({
       <div className="viewer-toolbar">
         {imageCount > 1 && (
           <>
-            <button type="button" className="tool-btn" disabled={imageIndex === 0} onClick={onPrev} aria-label="이전">
-              ‹
-            </button>
+            <button type="button" className="tool-btn" disabled={imageIndex === 0} onClick={onPrev} aria-label="이전">‹</button>
             <span className="viewer-nav-label">{imageIndex + 1} / {imageCount}</span>
-            <button
-              type="button"
-              className="tool-btn"
-              disabled={imageIndex >= imageCount - 1}
-              onClick={onNext}
-              aria-label="다음"
-            >
-              ›
-            </button>
+            <button type="button" className="tool-btn" disabled={imageIndex >= imageCount - 1} onClick={onNext} aria-label="다음">›</button>
           </>
         )}
         {prediction && (
@@ -153,10 +97,7 @@ export default function ImageViewer({
           {hasHeatmap ? (
             <ViewerPane label="AI 주의 영역" src={heatmapSrc} caption heat />
           ) : (
-            <ViewerPane
-              label="AI 주의 영역"
-              placeholder={loading ? '분석 중…' : 'Grad-CAM 미생성'}
-            />
+            <ViewerPane label="AI 주의 영역" placeholder={loading ? '분석 중…' : 'Grad-CAM 미생성'} />
           )}
         </div>
       ) : (
@@ -173,7 +114,7 @@ export default function ImageViewer({
         <p className="viewer-footnote">
           AI 주의 영역은 골절 위치가 아니라, 모델이 참고한 픽셀 분포입니다.
           {showBoxes && ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 원본 위 네모는 Grad-CAM 기반 의심 영역입니다.`}
-          {isFracture && !showBoxes && (patientScore ?? 0) < BOX_THRESHOLD && (patientScore ?? 0) > 0 &&
+          {isFracture && !showBoxes && (patientScore ?? 0) > 0 && (patientScore ?? 0) < BOX_THRESHOLD &&
             ` 골절 확률 ${Math.round((patientScore ?? 0) * 100)}% — 의심 영역 표시는 ${BOX_THRESHOLD * 100}% 이상에서 활성화됩니다.`}
         </p>
       )}

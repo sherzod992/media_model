@@ -1486,17 +1486,28 @@ h1, h2, h3, h4, h5, h6 {
 
 .viewer-pane-body {
   flex: 1;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 280px;
   background: #0a0c10;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   overflow: hidden;
+  padding: 12px;
+}
+
+/* 이미지와 동일한 크기 — JS 없이 박스 정렬 보장 */
+.viewer-image-wrap {
+  position: relative;
+  line-height: 0;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .attention-boxes {
   position: absolute;
-  inset: 12px;
+  inset: 0;
   pointer-events: none;
   z-index: 3;
 }
@@ -1536,13 +1547,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .viewer-pane-image {
-  position: absolute;
-  inset: 12px;
-  width: calc(100% - 24px);
-  height: calc(100% - 24px);
-  object-fit: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
-  z-index: 1;
 }
 
 .viewer-pane-empty,
